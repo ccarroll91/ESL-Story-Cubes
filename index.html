@@ -67,6 +67,43 @@
       flex-wrap: wrap;
     }
 
+    /* Collapsible Topics header */
+    .filters-toggle {
+      width: 100%;
+      background: transparent;
+      border: none;
+      padding: 0;
+      cursor: pointer;
+    }
+    
+    .filters-top.filters-toggle {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+    }
+    
+    .chevron {
+      font-size: 1.1rem;
+      color: #c7d2fe;
+      opacity: 0.9;
+      transition: transform 0.15s ease;
+    }
+    
+    /* Panel open/close */
+    .topic-panel {
+      margin-top: 0.75rem;
+    }
+    
+    .filters.collapsed .topic-panel {
+      display: none;
+    }
+    
+    .filters.collapsed .chevron {
+      transform: rotate(180deg); /* ▴ becomes ▾ effectively */
+    }
+
+
+    
     .chip-btn {
       border: 1px solid rgba(148, 163, 184, 0.35);
       background: rgba(2, 6, 23, 0.6);
@@ -244,21 +281,32 @@
     </section>
 
     <section class="filters" aria-label="Topic filters">
-      <div class="filters-top">
+      <button
+        id="topicsToggle"
+        class="filters-top filters-toggle"
+        type="button"
+        aria-expanded="true"
+        aria-controls="topicPanel"
+      >
         <h2>Topics</h2>
+        <span class="chevron" aria-hidden="true">▴</span>
+      </button>
+
+      <div id="topicPanel" class="topic-panel">
         <div class="filter-actions">
           <button id="selectAllBtn" class="chip-btn" type="button">Select all</button>
           <button id="selectNoneBtn" class="chip-btn" type="button">Select none</button>
         </div>
+    
+        <div id="topicList" class="topic-list">
+          <!-- checkboxes injected by JS -->
+        </div>
+  
+        <p class="hint">Only images from selected topics will appear.</p>
+        <p id="topicError" class="error" role="alert">Please select at least one topic.</p>
       </div>
-
-      <div id="topicList" class="topic-list">
-        <!-- checkboxes injected by JS -->
-      </div>
-
-      <p class="hint">Only images from selected topics will appear.</p>
-      <p id="topicError" class="error" role="alert">Please select at least one topic.</p>
     </section>
+
 
     <section id="imageGrid" class="grid" aria-live="polite"></section>
 
@@ -1288,176 +1336,203 @@ medicine: [
       
     };
 
-    // Flatten repository: [{url, topic}, ...]
-    const allImages = Object.entries(imageRepo).flatMap(([topic, urls]) =>
-      urls.map((url) => ({ url, topic }))
-    );
-
-    // Keep track of last generated URLs so we can avoid repeating them
-    let lastGeneratedUrls = new Set();
-
-    function getTopics() {
-      return Object.keys(imageRepo);
-    }
-
-    function getSelectedTopics() {
-      const checks = document.querySelectorAll('input[name="topic"]:checked');
-      return [...checks].map((c) => c.value);
-    }
-
-    function setAllTopics(checked) {
-      document.querySelectorAll('input[name="topic"]').forEach((c) => (c.checked = checked));
-    }
-
-    function buildTopicFilters() {
-      const topicList = document.getElementById("topicList");
-      topicList.innerHTML = "";
-
-      getTopics().forEach((topic) => {
-        const item = document.createElement("div");
-        item.className = "topic-item";
-
-        const input = document.createElement("input");
-        input.type = "checkbox";
-        input.name = "topic";
-        input.value = topic;
-        input.id = `topic-${topic}`;
-        input.checked = true;
-
-        const label = document.createElement("label");
-        label.htmlFor = input.id;
-        label.textContent = topic;
-
-        item.appendChild(input);
-        item.appendChild(label);
-        topicList.appendChild(item);
-      });
-    }
-
-    // Picks N unique images from selected topics, trying not to repeat last generation.
-    // If there aren't enough non-repeating images available, it will allow repeats as a fallback.
-    function getRandomSelectionFromTopicsAvoidingLast(count, selectedTopics) {
-      const pool = allImages.filter((img) => selectedTopics.includes(img.topic));
-      if (pool.length === 0) return [];
-
-      // First pass: try to pick from images NOT in lastGeneratedUrls
-      let primaryPool = pool.filter((img) => !lastGeneratedUrls.has(img.url));
-
-      // If primary pool is too small, fall back to full pool (allow repeats)
-      if (primaryPool.length < Math.min(count, pool.length)) {
-        primaryPool = pool;
+      // Flatten repository: [{url, topic}, ...]
+      const allImages = Object.entries(imageRepo).flatMap(([topic, urls]) =>
+        urls.map((url) => ({ url, topic }))
+      );
+      
+      // Keep track of last generated URLs so we can avoid repeating them
+      let lastGeneratedUrls = new Set();
+      
+      function getTopics() {
+        return Object.keys(imageRepo);
       }
-
-      const working = [...primaryPool];
-      const selection = [];
-
-      while (selection.length < count && working.length > 0) {
-        const index = Math.floor(Math.random() * working.length);
-        const [picked] = working.splice(index, 1);
-        selection.push(picked);
+      
+      function getSelectedTopics() {
+        const checks = document.querySelectorAll('input[name="topic"]:checked');
+        return [...checks].map((c) => c.value);
       }
-
-      return selection;
-    }
-
-    function createCards() {
-      const grid = document.getElementById("imageGrid");
-      grid.innerHTML = "";
-
-      for (let i = 0; i < NUM_SLOTS; i++) {
-        const card = document.createElement("article");
-        card.className = "image-card";
-
-        const wrapper = document.createElement("div");
-        wrapper.className = "image-wrapper";
-
-        const img = document.createElement("img");
-        img.alt = "";
-        img.loading = "lazy";
-
-        wrapper.appendChild(img);
-
-        const tag = document.createElement("div");
-        tag.className = "tag";
-        tag.textContent = "—";
-
-        card.appendChild(wrapper);
-        card.appendChild(tag);
-
-        grid.appendChild(card);
+      
+      function setAllTopics(checked) {
+        document.querySelectorAll('input[name="topic"]').forEach((c) => (c.checked = checked));
       }
-    }
-
-    function showTopicError(show) {
-      const el = document.getElementById("topicError");
-      el.classList.toggle("visible", !!show);
-    }
-
-    function generateImages() {
-      const selectedTopics = getSelectedTopics();
-
-      if (selectedTopics.length === 0) {
-        showTopicError(true);
-        return;
+      
+      function buildTopicFilters() {
+        const topicList = document.getElementById("topicList");
+        topicList.innerHTML = "";
+      
+        getTopics().forEach((topic) => {
+          const item = document.createElement("div");
+          item.className = "topic-item";
+      
+          const input = document.createElement("input");
+          input.type = "checkbox";
+          input.name = "topic";
+          input.value = topic;
+          input.id = `topic-${topic}`;
+          input.checked = true;
+      
+          const label = document.createElement("label");
+          label.htmlFor = input.id;
+          label.textContent = topic;
+      
+          item.appendChild(input);
+          item.appendChild(label);
+          topicList.appendChild(item);
+        });
       }
-      showTopicError(false);
-
-      const cards = document.querySelectorAll(".image-card");
-      const selection = getRandomSelectionFromTopicsAvoidingLast(cards.length, selectedTopics);
-
-      // Update lastGeneratedUrls for the next generate
-      lastGeneratedUrls = new Set(selection.map((s) => s.url));
-
-      cards.forEach((card, index) => {
-        const img = card.querySelector("img");
-        const tag = card.querySelector(".tag");
-        const data = selection[index];
-
-        card.classList.remove("visible");
-        void card.offsetWidth; // reflow for animation
-
-        if (!data) {
+      
+      // Picks N unique images from selected topics, trying not to repeat last generation.
+      // If there aren't enough non-repeating images, repeats are allowed as fallback.
+      function getRandomSelectionFromTopicsAvoidingLast(count, selectedTopics) {
+        const pool = allImages.filter((img) => selectedTopics.includes(img.topic));
+        if (pool.length === 0) return [];
+      
+        // Prefer images not used last time
+        let primaryPool = pool.filter((img) => !lastGeneratedUrls.has(img.url));
+      
+        // If too few remain, allow repeats
+        if (primaryPool.length < Math.min(count, pool.length)) {
+          primaryPool = pool;
+        }
+      
+        const working = [...primaryPool];
+        const selection = [];
+      
+        while (selection.length < count && working.length > 0) {
+          const index = Math.floor(Math.random() * working.length);
+          const [picked] = working.splice(index, 1);
+          selection.push(picked);
+        }
+      
+        return selection;
+      }
+      
+      function createCards() {
+        const grid = document.getElementById("imageGrid");
+        grid.innerHTML = "";
+      
+        for (let i = 0; i < NUM_SLOTS; i++) {
+          const card = document.createElement("article");
+          card.className = "image-card";
+      
+          const wrapper = document.createElement("div");
+          wrapper.className = "image-wrapper";
+      
+          const img = document.createElement("img");
+          img.alt = "";
+          img.loading = "lazy";
+      
+          wrapper.appendChild(img);
+      
+          const tag = document.createElement("div");
+          tag.className = "tag";
+          tag.textContent = "—";
+      
+          card.appendChild(wrapper);
+          card.appendChild(tag);
+      
+          grid.appendChild(card);
+        }
+      }
+      
+      // Keep the grid blank until the user clicks Generate
+      function clearCardsToEmptyState() {
+        const cards = document.querySelectorAll(".image-card");
+        cards.forEach((card) => {
+          const img = card.querySelector("img");
+          const tag = card.querySelector(".tag");
+      
           img.removeAttribute("src");
           img.alt = "";
-          tag.textContent = "NO IMAGE (add more files)";
-          card.classList.add("visible");
+          tag.textContent = "—";
+      
+          card.classList.remove("visible");
+        });
+      }
+      
+      function showTopicError(show) {
+        const el = document.getElementById("topicError");
+        el.classList.toggle("visible", !!show);
+      }
+      
+      function generateImages() {
+        const selectedTopics = getSelectedTopics();
+      
+        if (selectedTopics.length === 0) {
+          showTopicError(true);
           return;
         }
-
-        img.src = data.url;
-        img.alt = `${data.topic} image`;
-        tag.textContent = data.topic.toUpperCase();
-
-        card.classList.add("visible");
-      });
-    }
-
-    // --- Init ---
-    document.addEventListener("DOMContentLoaded", () => {
-      buildTopicFilters();
-      createCards();
-      generateImages(); // initial generate on load
-
-      document.getElementById("generateButton").addEventListener("click", generateImages);
-
-      document.getElementById("selectAllBtn").addEventListener("click", () => {
-        setAllTopics(true);
         showTopicError(false);
-        generateImages();
+      
+        const cards = document.querySelectorAll(".image-card");
+        const selection = getRandomSelectionFromTopicsAvoidingLast(cards.length, selectedTopics);
+      
+        // Update lastGeneratedUrls for next time
+        lastGeneratedUrls = new Set(selection.map((s) => s.url));
+      
+        cards.forEach((card, index) => {
+          const img = card.querySelector("img");
+          const tag = card.querySelector(".tag");
+          const data = selection[index];
+      
+          // retrigger fade-in animation
+          card.classList.remove("visible");
+          void card.offsetWidth;
+      
+          if (!data) {
+            img.removeAttribute("src");
+            img.alt = "";
+            tag.textContent = "NO IMAGE (add more files)";
+            card.classList.add("visible");
+            return;
+          }
+      
+          img.src = data.url;
+          img.alt = `${data.topic} image`;
+          tag.textContent = data.topic.toUpperCase();
+      
+          card.classList.add("visible");
+        });
+      }
+      
+      function setupCollapsibleTopics() {
+        const filtersSection = document.querySelector(".filters");
+        const topicsToggle = document.getElementById("topicsToggle");
+      
+        if (!filtersSection || !topicsToggle) return;
+      
+        topicsToggle.addEventListener("click", () => {
+          const isCollapsed = filtersSection.classList.toggle("collapsed");
+          topicsToggle.setAttribute("aria-expanded", String(!isCollapsed));
+        });
+      }
+      
+      // --- Init ---
+      document.addEventListener("DOMContentLoaded", () => {
+        buildTopicFilters();
+        createCards();
+        clearCardsToEmptyState(); // images hidden until Generate
+        setupCollapsibleTopics();
+      
+        document.getElementById("generateButton").addEventListener("click", generateImages);
+      
+        document.getElementById("selectAllBtn").addEventListener("click", () => {
+          setAllTopics(true);
+          showTopicError(false);
+        });
+      
+        document.getElementById("selectNoneBtn").addEventListener("click", () => {
+          setAllTopics(false);
+          showTopicError(true);
+        });
+      
+        // Validate only (no auto-generate)
+        document.getElementById("topicList").addEventListener("change", () => {
+          const selected = getSelectedTopics();
+          showTopicError(selected.length === 0);
+        });
       });
-
-      document.getElementById("selectNoneBtn").addEventListener("click", () => {
-        setAllTopics(false);
-        showTopicError(true);
-      });
-
-      // Auto-generate when filters change (optional)
-      document.getElementById("topicList").addEventListener("change", () => {
-        const selected = getSelectedTopics();
-        showTopicError(selected.length === 0);
-        if (selected.length > 0) generateImages();
-      });
-    });
-  </script>
+    </script>
 </body>
 </html>
