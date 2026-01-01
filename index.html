@@ -237,6 +237,11 @@
     /* --- Controls --- */
     .controls { display: flex; justify-content: center; gap: 0.75rem; flex-wrap: wrap; }
 
+    .controls-under-topics {
+      margin-top: -0.5rem;  /* tucks it closer to the Topics box */
+      margin-bottom: 1.25rem;
+    }
+    
     .generate-button {
       border: none;
       border-radius: 999px;
@@ -306,13 +311,14 @@
         <p id="topicError" class="error" role="alert">Please select at least one topic.</p>
       </div>
     </section>
-
-
-    <section id="imageGrid" class="grid" aria-live="polite"></section>
-
+    
     <section class="controls">
       <button id="generateButton" class="generate-button" type="button">Generate</button>
     </section>
+
+    <section id="imageGrid" class="grid" aria-live="polite"></section>
+
+
   </main>
 
   <script>
