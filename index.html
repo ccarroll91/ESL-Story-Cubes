@@ -2,15 +2,10 @@
 <html lang="en">
 <head>
   <meta charset="UTF-8" />
-  <title>Image Roll Game</title>
+  <title>Image Generator</title>
   <meta name="viewport" content="width=device-width, initial-scale=1" />
   <style>
-    /* --- Reset-ish --- */
-    * {
-      box-sizing: border-box;
-      margin: 0;
-      padding: 0;
-    }
+    * { box-sizing: border-box; margin: 0; padding: 0; }
 
     body {
       font-family: system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
@@ -23,7 +18,6 @@
       padding: 1.5rem;
     }
 
-    /* --- Layout --- */
     .game-container {
       width: 100%;
       max-width: 960px;
@@ -35,48 +29,113 @@
         0 0 0 1px rgba(148, 163, 184, 0.2);
     }
 
-    .title-area {
-      text-align: center;
-      margin-bottom: 1.5rem;
+    .title-area { text-align: center; margin-bottom: 1rem; }
+    .title-area h1 { font-size: 1.6rem; letter-spacing: 0.05em; margin-bottom: 0.25rem; }
+    .title-area p { font-size: 0.9rem; color: #9ca3af; }
+
+    /* --- Filters --- */
+    .filters {
+      display: flex;
+      flex-direction: column;
+      gap: 0.75rem;
+      margin: 1rem 0 1.25rem;
+      padding: 1rem;
+      border-radius: 1rem;
+      border: 1px solid rgba(148, 163, 184, 0.25);
+      background: rgba(15, 23, 42, 0.45);
     }
 
-    .title-area h1 {
-      font-size: 1.6rem;
-      letter-spacing: 0.05em;
-      margin-bottom: 0.25rem;
+    .filters-top {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 0.75rem;
+      flex-wrap: wrap;
     }
 
-    .title-area p {
+    .filters h2 {
+      font-size: 0.95rem;
+      font-weight: 700;
+      letter-spacing: 0.08em;
+      text-transform: uppercase;
+      color: #c7d2fe;
+    }
+
+    .filter-actions {
+      display: flex;
+      gap: 0.5rem;
+      flex-wrap: wrap;
+    }
+
+    .chip-btn {
+      border: 1px solid rgba(148, 163, 184, 0.35);
+      background: rgba(2, 6, 23, 0.6);
+      color: #e5e7eb;
+      border-radius: 999px;
+      padding: 0.4rem 0.75rem;
+      font-size: 0.85rem;
+      cursor: pointer;
+      transition: transform 0.12s ease, filter 0.12s ease, border-color 0.12s ease;
+    }
+
+    .chip-btn:hover { transform: translateY(-1px); filter: brightness(1.05); border-color: rgba(226,232,240,0.6); }
+    .chip-btn:active { transform: translateY(1px) scale(0.99); filter: brightness(0.97); }
+
+    .topic-list {
+      display: grid;
+      gap: 0.5rem 0.75rem;
+      grid-template-columns: repeat(2, minmax(0, 1fr));
+    }
+
+    @media (min-width: 640px) {
+      .topic-list { grid-template-columns: repeat(4, minmax(0, 1fr)); }
+    }
+
+    .topic-item {
+      display: flex;
+      align-items: center;
+      gap: 0.55rem;
+      padding: 0.55rem 0.65rem;
+      border-radius: 0.75rem;
+      border: 1px solid rgba(148, 163, 184, 0.22);
+      background: rgba(2, 6, 23, 0.55);
+    }
+
+    .topic-item input { width: 18px; height: 18px; accent-color: #60a5fa; }
+
+    .topic-item label {
+      cursor: pointer;
       font-size: 0.9rem;
+      color: #e5e7eb;
+      user-select: none;
+    }
+
+    .hint {
+      font-size: 0.85rem;
       color: #9ca3af;
     }
 
-    .grid {
-      display: grid;
-      gap: 1rem;
-      margin-bottom: 1.5rem;
+    .error {
+      display: none;
+      font-size: 0.85rem;
+      color: #fecaca;
     }
 
-    /* 2–3 columns on bigger screens, 1–2 on small */
+    .error.visible { display: block; }
+
+    /* --- Grid --- */
+    .grid { display: grid; gap: 1rem; margin-bottom: 1.5rem; }
+
     @media (min-width: 480px) {
-      .grid {
-        grid-template-columns: repeat(2, minmax(0, 1fr));
-      }
+      .grid { grid-template-columns: repeat(2, minmax(0, 1fr)); }
     }
-
     @media (min-width: 768px) {
-      .grid {
-        grid-template-columns: repeat(3, minmax(0, 1fr));
-      }
+      .grid { grid-template-columns: repeat(3, minmax(0, 1fr)); }
     }
-
     @media (min-width: 1024px) {
-      .grid {
-        grid-template-columns: repeat(4, minmax(0, 1fr));
-      }
+      .grid { grid-template-columns: repeat(4, minmax(0, 1fr)); }
     }
 
-    /* --- Image cards --- */
     .image-card {
       position: relative;
       background: radial-gradient(circle at top, #1f2937, #020617);
@@ -87,18 +146,12 @@
       flex-direction: column;
       justify-content: space-between;
       min-height: 180px;
-      transition:
-        transform 0.18s ease,
-        box-shadow 0.18s ease,
-        border-color 0.18s ease;
+      transition: transform 0.18s ease, box-shadow 0.18s ease, border-color 0.18s ease;
       opacity: 0;
       transform: translateY(10px) scale(0.97);
     }
 
-    .image-card.visible {
-      opacity: 1;
-      transform: translateY(0) scale(1);
-    }
+    .image-card.visible { opacity: 1; transform: translateY(0) scale(1); }
 
     .image-card:hover {
       transform: translateY(-2px) scale(1.01);
@@ -109,7 +162,7 @@
     .image-wrapper {
       position: relative;
       width: 100%;
-      aspect-ratio: 4 / 3; /* keeps boxes neat */
+      aspect-ratio: 4 / 3;
       overflow: hidden;
       background: #020617;
     }
@@ -122,9 +175,7 @@
       transition: transform 0.5s ease;
     }
 
-    .image-card:hover img {
-      transform: scale(1.06);
-    }
+    .image-card:hover img { transform: scale(1.06); }
 
     .tag {
       font-size: 0.75rem;
@@ -137,12 +188,9 @@
     }
 
     /* --- Controls --- */
-    .controls {
-      display: flex;
-      justify-content: center;
-    }
+    .controls { display: flex; justify-content: center; gap: 0.75rem; flex-wrap: wrap; }
 
-    .roll-button {
+    .generate-button {
       border: none;
       border-radius: 999px;
       padding: 0.9rem 2.25rem;
@@ -156,13 +204,10 @@
       box-shadow:
         0 14px 30px rgba(37, 99, 235, 0.5),
         0 0 0 1px rgba(191, 219, 254, 0.35);
-      transition:
-        transform 0.12s ease,
-        box-shadow 0.12s ease,
-        filter 0.12s ease;
+      transition: transform 0.12s ease, box-shadow 0.12s ease, filter 0.12s ease;
     }
 
-    .roll-button:hover {
+    .generate-button:hover {
       transform: translateY(-1px);
       box-shadow:
         0 18px 40px rgba(37, 99, 235, 0.8),
@@ -170,7 +215,7 @@
       filter: brightness(1.05);
     }
 
-    .roll-button:active {
+    .generate-button:active {
       transform: translateY(1px) scale(0.99);
       box-shadow:
         0 8px 18px rgba(15, 23, 42, 0.9),
@@ -178,32 +223,37 @@
       filter: brightness(0.97);
     }
 
-    .roll-button:focus-visible {
-      outline: 2px solid #fde68a;
-      outline-offset: 3px;
-    }
+    .generate-button:focus-visible { outline: 2px solid #fde68a; outline-offset: 3px; }
   </style>
 </head>
 <body>
   <main class="game-container">
     <section class="title-area">
       <h1>Image Generator</h1>
-      <p>Tap &quot;Roll&quot; to pull a new random set of images.</p>
+      <p>Pick topics, then hit <strong>Generate</strong>.</p>
     </section>
 
-    <section id="imageGrid" class="grid" aria-live="polite">
-      <!-- cards are injected by JavaScript -->
+    <section class="filters" aria-label="Topic filters">
+      <div class="filters-top">
+        <h2>Topics</h2>
+        <div class="filter-actions">
+          <button id="selectAllBtn" class="chip-btn" type="button">Select all</button>
+          <button id="selectNoneBtn" class="chip-btn" type="button">Select none</button>
+        </div>
+      </div>
+
+      <div id="topicList" class="topic-list">
+        <!-- checkboxes injected by JS -->
+      </div>
+
+      <p class="hint">Only images from selected topics will appear.</p>
+      <p id="topicError" class="error" role="alert">Please select at least one topic.</p>
     </section>
+
+    <section id="imageGrid" class="grid" aria-live="polite"></section>
 
     <section class="controls">
-      <button
-        id="rollButton"
-        class="roll-button"
-        type="button"
-        aria-label="Roll a new set of images"
-      >
-        Generate
-      </button>
+      <button id="generateButton" class="generate-button" type="button">Generate</button>
     </section>
   </main>
 
@@ -212,7 +262,7 @@
     const NUM_SLOTS = 4; // Set to 4, 5, or 6
 
     // Image repository grouped by topic/tag
-    // Replace these paths with your real image files
+    // Replace these paths with your real images
     const imageRepo = {
       animals: [
         "images/animals/dog.jpg",
@@ -232,32 +282,83 @@
         "images/food/sushi.jpg",
         "images/food/icecream.jpg",
       ],
-      // Add more topics if you like:
-      // city: ["images/city/...", "..."]
     };
 
-    // Flatten the repository into a single array: [{url, topic}, ...]
+    // Flatten repository: [{url, topic}, ...]
     const allImages = Object.entries(imageRepo).flatMap(([topic, urls]) =>
       urls.map((url) => ({ url, topic }))
     );
 
-    // Utility: get N random unique images (or fewer if not enough in repo)
-    function getRandomSelection(count) {
-      const pool = [...allImages];
+    // Keep track of last generated URLs so we can avoid repeating them
+    let lastGeneratedUrls = new Set();
+
+    function getTopics() {
+      return Object.keys(imageRepo);
+    }
+
+    function getSelectedTopics() {
+      const checks = document.querySelectorAll('input[name="topic"]:checked');
+      return [...checks].map((c) => c.value);
+    }
+
+    function setAllTopics(checked) {
+      document.querySelectorAll('input[name="topic"]').forEach((c) => (c.checked = checked));
+    }
+
+    function buildTopicFilters() {
+      const topicList = document.getElementById("topicList");
+      topicList.innerHTML = "";
+
+      getTopics().forEach((topic) => {
+        const item = document.createElement("div");
+        item.className = "topic-item";
+
+        const input = document.createElement("input");
+        input.type = "checkbox";
+        input.name = "topic";
+        input.value = topic;
+        input.id = `topic-${topic}`;
+        input.checked = true;
+
+        const label = document.createElement("label");
+        label.htmlFor = input.id;
+        label.textContent = topic;
+
+        item.appendChild(input);
+        item.appendChild(label);
+        topicList.appendChild(item);
+      });
+    }
+
+    // Picks N unique images from selected topics, trying not to repeat last generation.
+    // If there aren't enough non-repeating images available, it will allow repeats as a fallback.
+    function getRandomSelectionFromTopicsAvoidingLast(count, selectedTopics) {
+      const pool = allImages.filter((img) => selectedTopics.includes(img.topic));
+      if (pool.length === 0) return [];
+
+      // First pass: try to pick from images NOT in lastGeneratedUrls
+      let primaryPool = pool.filter((img) => !lastGeneratedUrls.has(img.url));
+
+      // If primary pool is too small, fall back to full pool (allow repeats)
+      if (primaryPool.length < Math.min(count, pool.length)) {
+        primaryPool = pool;
+      }
+
+      const working = [...primaryPool];
       const selection = [];
 
-      while (selection.length < count && pool.length > 0) {
-        const index = Math.floor(Math.random() * pool.length);
-        const [picked] = pool.splice(index, 1); // remove so we don't repeat
+      while (selection.length < count && working.length > 0) {
+        const index = Math.floor(Math.random() * working.length);
+        const [picked] = working.splice(index, 1);
         selection.push(picked);
       }
 
       return selection;
     }
 
-    // Create the image cards in the DOM
     function createCards() {
       const grid = document.getElementById("imageGrid");
+      grid.innerHTML = "";
 
       for (let i = 0; i < NUM_SLOTS; i++) {
         const card = document.createElement("article");
@@ -267,7 +368,7 @@
         wrapper.className = "image-wrapper";
 
         const img = document.createElement("img");
-        img.alt = ""; // will be set when we roll
+        img.alt = "";
         img.loading = "lazy";
 
         wrapper.appendChild(img);
@@ -283,44 +384,75 @@
       }
     }
 
-    // Update the cards with new random images
-    function rollImages() {
+    function showTopicError(show) {
+      const el = document.getElementById("topicError");
+      el.classList.toggle("visible", !!show);
+    }
+
+    function generateImages() {
+      const selectedTopics = getSelectedTopics();
+
+      if (selectedTopics.length === 0) {
+        showTopicError(true);
+        return;
+      }
+      showTopicError(false);
+
       const cards = document.querySelectorAll(".image-card");
-      const selection = getRandomSelection(cards.length);
+      const selection = getRandomSelectionFromTopicsAvoidingLast(cards.length, selectedTopics);
+
+      // Update lastGeneratedUrls for the next generate
+      lastGeneratedUrls = new Set(selection.map((s) => s.url));
 
       cards.forEach((card, index) => {
-        const data = selection[index];
         const img = card.querySelector("img");
         const tag = card.querySelector(".tag");
+        const data = selection[index];
+
+        card.classList.remove("visible");
+        void card.offsetWidth; // reflow for animation
 
         if (!data) {
-          // In case there are fewer images than slots
           img.removeAttribute("src");
           img.alt = "";
-          tag.textContent = "No image";
+          tag.textContent = "NO IMAGE (add more files)";
+          card.classList.add("visible");
           return;
         }
 
-        // Slight trick to retrigger the fade-in / movement
-        card.classList.remove("visible");
-        // Force reflow
-        void card.offsetWidth;
-
         img.src = data.url;
-        img.alt = data.topic + " image";
+        img.alt = `${data.topic} image`;
         tag.textContent = data.topic.toUpperCase();
 
         card.classList.add("visible");
       });
     }
 
-    // Initial setup
+    // --- Init ---
     document.addEventListener("DOMContentLoaded", () => {
+      buildTopicFilters();
       createCards();
-      rollImages(); // first roll on load
+      generateImages(); // initial generate on load
 
-      const rollButton = document.getElementById("rollButton");
-      rollButton.addEventListener("click", rollImages);
+      document.getElementById("generateButton").addEventListener("click", generateImages);
+
+      document.getElementById("selectAllBtn").addEventListener("click", () => {
+        setAllTopics(true);
+        showTopicError(false);
+        generateImages();
+      });
+
+      document.getElementById("selectNoneBtn").addEventListener("click", () => {
+        setAllTopics(false);
+        showTopicError(true);
+      });
+
+      // Auto-generate when filters change (optional)
+      document.getElementById("topicList").addEventListener("change", () => {
+        const selected = getSelectedTopics();
+        showTopicError(selected.length === 0);
+        if (selected.length > 0) generateImages();
+      });
     });
   </script>
 </body>
